@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "cloud-warehouse"
+version = "0.1.0"
+description = "Part II of Udacity's Data Engineering With AWS Nano-Degree Program"
+authors = ["Caspar Heidbrink <37964284+DecisioNaut@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "cloud_warehouse"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.1.0"
+flake8 = "^6.0.0"
+ipykernel = "^6.21.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
