@@ -9,12 +9,17 @@ packages = [{include = "cloud_warehouse"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
+ipykernel = "^6.21.2"
+psycopg2-binary = "^2.9.5"
+python-dotenv = "^1.0.0"
+ipython-sql = "^0.5.0"
+pandas = "^1.5.3"
+sqlalchemy = "^2.0.5.post1"
 
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
 flake8 = "^6.0.0"
-ipykernel = "^6.21.2"
 
 [build-system]
 requires = ["poetry-core"]
