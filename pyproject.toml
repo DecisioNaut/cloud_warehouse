@@ -16,6 +16,7 @@ ipython-sql = "^0.5.0"
 pandas = "^1.5.3"
 sqlalchemy = "^2.0.5.post1"
 boto3 = "^1.26.86"
+matplotlib = "^3.7.1"
 
 
 [tool.poetry.group.dev.dependencies]
