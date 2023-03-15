@@ -1,4 +1,4 @@
-# Cloud Data Warehouses On AWS
+# Cloud Data Warehouses With AWS
 A lesson of Udacity's Data Engineering Nanodegree With AWS program.
 
 This repository contains the code for the project of the lesson "Cloud Data Warehouses On AWS" of Udacity's Data Engineering Nanodegree With AWS program. Besides the project for the lesson itself, it also contains the code performed during the exercises of the lesson.
