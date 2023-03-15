@@ -1,4 +1,4 @@
-# Udacity's Data Engineering With AWS Nano-Degree - Project: Data Warehouse
+# Udacity's Data Engineering With AWS <n></n> Nano-Degree - Project: Data Warehouse
 
 This is a **fictional project for lesson 2** of the Udacity's Data Engineering with AWS nano-degree course to be review by Udacity. Besides `README.md` the following scripts are relevant for the project:
 - `sql_queries.py`
