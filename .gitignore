@@ -3,3 +3,4 @@ dwh.cfg
 *.pyc
 .env
 *.log
+*.csv
