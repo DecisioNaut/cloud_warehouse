@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS log_data (
     ts              INTEGER         NOT NULL,
     userAgent       VARCHAR(200)    NULL,
     userId          INTEGER         NULL,
+    UNIQUE          (sessionId, itemInSession),
     PRIMARY KEY     (sessionId, itemInSession)
 );
 """
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS song_data (
     song_id         VARCHAR(50)     NOT NULL,
     title           VARCHAR(200)    NOT NULL,
     year            INTEGER         NOT NULL,
+    UNIQUE          (artist_id, song_id),
     PRIMARY KEY     (artist_id, song_id)
 );
 """
@@ -90,6 +92,7 @@ CREATE TABLE IF NOT EXISTS time (
     hour            INTEGER         NOT NULL,
     week            INTEGER         NOT NULL,
     weekday         INTEGER         NOT NULL,
+    UNIQUE          (start_time),
     PRIMARY KEY     (start_time)
 )
 DISTSTYLE EVEN
@@ -103,6 +106,7 @@ CREATE TABLE IF NOT EXISTS users (
     last_name       VARCHAR(50)     NOT NULL,
     gender          CHAR(1)         NOT NULL,
     level           CHAR(4)         NOT NULL,
+    UNIQUE          (user_id),
     PRIMARY KEY     (user_id)
 )
 DISTSTYLE ALL
@@ -116,6 +120,7 @@ CREATE TABLE IF NOT EXISTS artists (
     location        VARCHAR(200)    NULL,
     latitude        FLOAT           NULL,
     longitude       FLOAT           NULL,
+    UNIQUE          (artist_id),
     PRIMARY KEY     (artist_id)
 )
 DISTSTYLE ALL
@@ -130,6 +135,7 @@ CREATE TABLE IF NOT EXISTS songs (
     year            INTEGER         NULL,
     duration        FLOAT           NULL,
     PRIMARY KEY     (song_id),
+    UNIQUE          (song_id),
     FOREIGN KEY     (artist_id)     REFERENCES  artists (artist_id)
 )
 DISTSTYLE ALL
@@ -162,15 +168,19 @@ SORTKEY (start_time);
 
 # COPY DATA INTO STAGING TABLES
 
-staging_events_copy = (
-    """
+staging_events_copy = f"""
+COPY log_data
+FROM {config["S3"]["log_data"]}
+IAM_ROLE {config["IAM_ROLE"]["ARN"]}
+JSON {config["S3"]["log_jsonpath"]}
 """
-).format()
 
-staging_songs_copy = (
-    """
+staging_songs_copy = f"""
+COPY song_data
+FROM {config["S3"]["song_data"]}
+IAM_ROLE {config["IAM_ROLE"]["ARN"]}
+FORMAT AS JSON 'auto'
 """
-).format()
 
 # INSERT INTO FINAL TABLES
 
@@ -179,13 +189,13 @@ staging_songs_copy = (
 time_table_insert = """
 INSERT INTO time
 SELECT
-    TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second'                       AS start_time,
-    EXTRACT(year FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')    AS year,
-    EXTRACT(month FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')   AS month,
-    EXTRACT(day FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')     AS day,
-    EXTRACT(hour FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')    AS hour,
-    EXTRACT(week FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')    AS week,
-    EXTRACT(dow FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second')     AS weekday
+    TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
+    EXTRACT(year FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS year,
+    EXTRACT(month FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS month,
+    EXTRACT(day FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS day,
+    EXTRACT(hour FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS hour,
+    EXTRACT(week FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS week,
+    EXTRACT(dow FROM TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second') AS weekday
 FROM
     log_data
 WHERE
@@ -193,16 +203,123 @@ WHERE
     length > 0
 GROUP BY
     start_time
+ORDER BY
+    start_time
 ;
-"""
-
-artist_table_insert = """
 """
 
 user_table_insert = """
 """
 
+artist_table_insert = """
+WITH
+    log_data_artists AS (
+        SELECT DISTINCT
+            artist AS name
+        FROM
+            log_data
+        WHERE
+            auth = 'Logged In' AND
+            length > 0
+    ),
+    song_data_artists AS (
+        SELECT DISTINCT
+            artist_name,
+            artist_location AS location,
+            artist_latitude AS latitude,
+            artist_longitude AS longitude
+        FROM
+            song_data
+        ORDER BY
+            location DESC,
+            latitude DESC,
+            longitude DESC
+    )
+
+INSERT INTO artists
+SELECT
+    ROW_NUMBER() OVER () AS artist_id,
+    log_data_artists.name,
+    song_data_artists.location,
+    song_data_artists.latitude,
+    song_data_artists.longitude
+FROM
+    log_data_artists
+LEFT JOIN
+    song_data_artists
+ON
+    log_data_artists.name = song_data_artists.artist_name;
+
+"""
+
+
 song_table_insert = """
+WITH
+    raw_log_data AS (
+        SELECT
+            sessionId AS session_id,
+            itemInSession AS item_in_session,
+            DATETIME(ts / 1000, 'auto') AS start_time,
+            artist,
+            song,
+            userId AS user_id,
+            level,
+            location,
+            userAgent AS user_agent
+        FROM
+            log_data
+        WHERE
+            auth = 'Logged In' AND
+            length > 0
+    ),
+    raw_artist_data AS (
+        SELECT
+            artist_id,
+            name
+        FROM
+            artists
+    ),
+    raw_song_data AS (
+        SELECT
+            song_id,
+            title,
+            artist_id
+        FROM
+            songs
+    )
+
+INSERT INTO songplays (
+    session_id,
+    songplay_id,
+    start_time,
+    artist_id,
+    song_id,
+    user_id,
+    level,
+    location,
+    user_agent
+)
+SELECT
+    raw_log_data.session_id,
+    raw_log_data.item_in_session,
+    raw_log_data.start_time,
+    raw_artist_data.artist_id,
+    raw_song_data.song_id,
+    raw_log_data.user_id,
+    raw_log_data.level,
+    raw_log_data.location,
+    raw_log_data.user_agent
+FROM
+    raw_log_data
+LEFT JOIN
+    raw_artist_data
+ON
+    raw_log_data.artist = raw_artist_data.name
+LEFT JOIN
+    raw_song_data
+ON
+    raw_log_data.song = raw_song_data.title AND
+    raw_artist_data.artist_id = raw_song_data.artist_id;
 """
 
 # Fact Table
