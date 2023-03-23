@@ -25,11 +25,11 @@ DROP TABLE IF EXISTS users CASCADE;
 """
 
 artist_table_drop = """
-DROP TABLE IF EXISTS songs CASCADE;
+DROP TABLE IF EXISTS artists CASCADE;
 """
 
 song_table_drop = """
-DROP TABLE IF EXISTS artists CASCADE;
+DROP TABLE IF EXISTS songs CASCADE;
 """
 
 # Fact Table
@@ -40,7 +40,7 @@ DROP TABLE IF EXISTS songplays CASCADE;
 # CREATE TABLES
 
 # Staging Tables
-stating_logs_table_create = """
+staging_logs_table_create = """
 CREATE TABLE IF NOT EXISTS log_data (
     artist          VARCHAR(200)    NULL,
     auth            VARCHAR(50)     NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS log_data (
     sessionId       INTEGER         NOT NULL,
     song            VARCHAR(200)    NULL,
     status          INTEGER         NOT NULL,
-    ts              INTEGER         NOT NULL,
+    ts              BIGINT          NOT NULL,
     userAgent       VARCHAR(200)    NULL,
     userId          INTEGER         NULL,
     UNIQUE          (sessionId, itemInSession),
@@ -157,9 +157,9 @@ CREATE TABLE IF NOT EXISTS songplays (
     PRIMARY KEY (session_id, songplay_id),
     UNIQUE (session_id, songplay_id),
     FOREIGN KEY (start_time)        REFERENCES  time (start_time),
+    FOREIGN KEY (user_id)           REFERENCES  users (user_id),
     FOREIGN KEY (artist_id)         REFERENCES  artists (artist_id),
-    FOREIGN KEY (song_id)           REFERENCES  songs (song_id),
-    FOREIGN KEY (user_id)           REFERENCES  users (user_id)
+    FOREIGN KEY (song_id)           REFERENCES  songs (song_id)
 )
 DISTSTYLE EVEN
 SORTKEY (start_time);
@@ -209,6 +209,45 @@ ORDER BY
 """
 
 user_table_insert = """
+WITH
+    user_log_data AS (
+        SELECT
+            userId AS user_id,
+            firstName AS first_name,
+            lastName AS last_name,
+            gender,
+            level,
+            TIMESTAMP 'epoch' + ts / 1000 * INTERVAL '1 second' AS time
+        FROM
+            log_data
+        WHERE
+            auth = 'Logged In' AND
+            length > 0
+    ),
+    max_user_times AS (
+        SELECT
+            user_id,
+            MAX(time) AS max_time
+        FROM
+            user_log_data
+        GROUP BY
+            user_id
+    )
+
+INSERT INTO users
+SELECT
+    user_log_data.user_id,
+    user_log_data.first_name,
+    user_log_data.last_name,
+    user_log_data.gender,
+    user_log_data.level
+FROM
+    user_log_data
+JOIN
+    max_user_times
+ON
+    user_log_data.user_id = max_user_times.user_id AND
+    user_log_data.time = max_user_times.max_time;
 """
 
 artist_table_insert = """
@@ -254,12 +293,77 @@ ON
 
 
 song_table_insert = """
+WITH log_data_songs AS (
+    SELECT
+        song AS title,
+        artist
+    FROM
+        log_data
+    WHERE
+        auth = 'Logged In' AND
+        length > 0
+    GROUP BY
+        title,
+        artist
+),
+artist_ids AS (
+    SELECT
+        name,
+        artist_id
+    FROM
+        artists
+),
+log_data_songs_with_artist_id AS (
+    SELECT
+        log_data_songs.title,
+        log_data_songs.artist,
+        artist_ids.artist_id
+    FROM
+        log_data_songs
+    LEFT JOIN
+        artist_ids
+    ON log_data_songs.artist = artist_ids.name
+),
+song_data_ranked AS (
+    SELECT
+        title,
+        artist_name,
+        CASE
+            WHEN year = 0 THEN NULL
+            ELSE year
+        END AS year,
+        duration,
+        DENSE_RANK() OVER (PARTITION BY title, artist_name ORDER BY duration DESC) AS rank
+    FROM
+        song_data
+)
+
+INSERT INTO songs
+SELECT
+    ROW_NUMBER() OVER () AS song_id,
+    log_data_songs_with_artist_id.title,
+    log_data_songs_with_artist_id.artist_id,
+    song_data_ranked.year,
+    song_data_ranked.duration
+FROM
+    log_data_songs_with_artist_id
+LEFT JOIN
+    song_data_ranked
+ON
+    log_data_songs_with_artist_id.title = song_data_ranked.title AND
+    log_data_songs_with_artist_id.artist = song_data_ranked.artist_name
+WHERE
+    song_data_ranked.rank = 1;
+"""
+
+# Fact Table
+songplay_table_insert = """
 WITH
     raw_log_data AS (
         SELECT
             sessionId AS session_id,
             itemInSession AS item_in_session,
-            DATETIME(ts / 1000, 'auto') AS start_time,
+            TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
             artist,
             song,
             userId AS user_id,
@@ -322,11 +426,6 @@ ON
     raw_artist_data.artist_id = raw_song_data.artist_id;
 """
 
-# Fact Table
-songplay_table_insert = """
-"""
-
-
 # QUERY LISTS for import from etl.py
 
 # Drop Tables
@@ -346,7 +445,7 @@ drop_table_queries = [
 # Create Tables
 create_table_queries = [
     # Staging Tables
-    stating_logs_table_create,
+    staging_logs_table_create,
     staging_songs_table_create,
     # Dimension Tables
     time_table_create,
