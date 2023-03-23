@@ -7,7 +7,7 @@ config.read("dwh.cfg")
 # DROP TABLES
 
 # Staging Tables
-staging_events_table_drop = """
+stating_logs_table_drop = """
 DROP TABLE IF EXISTS log_data CASCADE;
 """
 
@@ -40,7 +40,7 @@ DROP TABLE IF EXISTS songplays CASCADE;
 # CREATE TABLES
 
 # Staging Tables
-staging_events_table_create = """
+stating_logs_table_create = """
 CREATE TABLE IF NOT EXISTS log_data (
     artist          VARCHAR(200)    NULL,
     auth            VARCHAR(50)     NOT NULL,
@@ -168,7 +168,7 @@ SORTKEY (start_time);
 
 # COPY DATA INTO STAGING TABLES
 
-staging_events_copy = f"""
+stating_logs_copy = f"""
 COPY log_data
 FROM {config["S3"]["log_data"]}
 IAM_ROLE {config["IAM_ROLE"]["ARN"]}
@@ -332,7 +332,7 @@ songplay_table_insert = """
 # Drop Tables
 drop_table_queries = [
     # Staging Tables
-    staging_events_table_drop,
+    stating_logs_table_drop,
     staging_songs_table_drop,
     # Dimension Tables
     time_table_drop,
@@ -346,7 +346,7 @@ drop_table_queries = [
 # Create Tables
 create_table_queries = [
     # Staging Tables
-    staging_events_table_create,
+    stating_logs_table_create,
     staging_songs_table_create,
     # Dimension Tables
     time_table_create,
@@ -358,7 +358,7 @@ create_table_queries = [
 ]
 
 # Copy Data into Staging Tables
-copy_table_queries = [staging_events_copy, staging_songs_copy]
+copy_table_queries = [stating_logs_copy, staging_songs_copy]
 
 # Insert Data into Final Tables
 # Please note that the order of the insert queries is important
