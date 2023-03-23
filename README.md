@@ -11,8 +11,7 @@ This is a **fictional project for lesson 2** of the **Udacity's Data Engineering
         1. [Log Data](#411-log-data)
         2. [Song Data](#412-song-data)
     2. [Model](#42-model)
-    3. [ETL](#43-etl)
-5. [Recommendations for the team](#5-recommendations-for-the-team)
+4. [Recommendations for the team](#4-recommendations-for-the-team)
 
 ## 1. The (Fictional) Task In A Nutshell
 
@@ -41,7 +40,7 @@ Please note that, in addition to the project itself, this repository also contai
 
 ## 3. Usage
 
-## 4. Data, Model and ETL
+## 4. Data and Model
 
 ### 4.1 Data
 
@@ -175,9 +174,7 @@ Please note the following:
     - The columns `duration` and `year` are nullable. They are gathered from the song files, which are not always complete, and are only partly matching the song information from the log files.
 - Don't confuse the `artist_id` and the `song_id` from the `song_data` files with the `artist_id` and the `song_id` in this schema. The `song_data` files are not matching well the entries in the `log_data` files regarding names and titles. Therefore, own keys are used for the `songs` and `artists` tables, and as a consequence, for the `songplays` table as well.
 
-### 4.3 ETL
-
-## 5. Recommendations for the team
+## 4. Recommendations for the team
 - The data in the `log_data` files regarding artist names and song titles does not match the data from the `song_data` files. Also the `song_data` files seem to have some issues that look like duplicates and wrong entries. To build a good data source for analytics, the corresponding processes should be reviewed and improved.
 - The usage in terms of common queries and the future size of the different tables is not clear yet. Therefore, the distribution strategy for the tables is not optimized yet. This should be reviewed once the usage and the size of the data is clearer.
 - Right now, using a Redshift cluster is not really necessary. The data is small enough to be processed on a single node or even a more traditional SQL database. However, if the data is growing, and the cluster can be easily scaled up. Therefore, it is recommended to use a Redshift cluster from the beginning, but this should be reviewed once the future growth of Sparkify is clearer.
