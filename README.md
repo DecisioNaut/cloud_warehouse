@@ -8,8 +8,11 @@ This is a **fictional project for lesson 2** of the **Udacity's Data Engineering
 3. [Usage](#3-usage)
 4. [Data, Model and ETL](#4-data-model-and-etl)
     1. [Data](#41-data)
+        1. [Log Data](#411-log-data)
+        2. [Song Data](#412-song-data)
     2. [Model](#42-model)
     3. [ETL](#43-etl)
+5. [Recommendations for the team](#5-recommendations-for-the-team)
 
 ## 1. The (Fictional) Task In A Nutshell
 
@@ -42,6 +45,7 @@ Please note that, in addition to the project itself, this repository also contai
 
 ### 4.1 Data
 
+#### 4.1.1 Log Data
 A typical JSON log file looks like this:
 ```
 {
@@ -65,6 +69,33 @@ A typical JSON log file looks like this:
     'userId': '73'
 }
 ```
+As we are aiming to build a data warehouse for querying song plays, it is important to notice that not all log entries are relevant for the data warehouse. Files where `auth` is not `Logged In` or where `lenght` is 0 are those not containing the relevant information. So, we need to filter out those files before loading them into the final files.  
+We are also provided with a JSON file `log_json_path.json` which contains the path to the relevant information in the log files. This is used to parse the log files.
+The schema for saving the `log_data` files in Redshift is:
+| Column Name    | Data Type      | Availability |
+|----------------|----------------|--------------|
+| artist         | VARCHAR(200)   | NULL         |
+| auth           | VARCHAR(50)    | NOT NULL     |
+| firstName      | VARCHAR(50)    | NULL         |
+| gender         | CHAR(1)        | NULL         |
+| itemInSession  | INTEGER        | NOT NULL     |
+| lastName       | VARCHAR(50)    | NULL         |
+| length         | FLOAT          | NULL         |
+| level          | CHAR(4)        | NOT NULL     |        
+| location       | VARCHAR(200)   | NULL         |
+| method         | VARCHAR(10)    | NOT NULL     |
+| page           | VARCHAR(50)    | NOT NULL     |
+| registration   | FLOAT          | NULL         |
+| sessionId      | INTEGER        | NOT NULL     |
+| song           | VARCHAR(200)   | NULL         |
+| status         | INTEGER        | NOT NULL     |
+| ts             | BIGINT         | NOT NULL     |
+| userAgent      | VARCHAR(200)   | NULL         |
+| userId         | INTEGER        | NULL         |
+
+To include a data quality check, we require `sessionId` and `itemInSession` to be unique.
+
+#### 4.1.2 Song Data
 A typical JSON song file looks like this:
 ```
 {
@@ -80,82 +111,75 @@ A typical JSON song file looks like this:
     'year': 1975
 }
 ```
+It is important to notice here, that the `song_data` files are not matching well with the `log_data` files. This may be due to different sources or naming convention, misspellings, etc. So, we need to be careful when joining the data and concentrate on data from the `log_data` files.
+
+The schema for saving the `song_data` files in Redshift is:
+| Column Name      | Data Type      | Availability |
+|------------------|----------------|--------------|
+| artist_id        | VARCHAR(50)    | NOT NULL     |
+| artist_latitude  | FLOAT          | NULL         |
+| artist_location  | VARCHAR(200)   | NULL         |
+| artist_longitude | FLOAT          | NULL         |
+| artist_name      | VARCHAR(200)   | NOT NULL     |
+| duration         | FLOAT          | NOT NULL     |
+| num_songs        | INTEGER        | NOT NULL     |
+| song_id          | VARCHAR(50)    | NOT NULL     |
+| title            | VARCHAR(200)   | NOT NULL     |
+| year             | INTEGER        | NOT NULL     |
+
+Please note that `year` is sometimes 0, which is not a valid year. So, we need to convert these values to `NULL` before loading them into the final files.
+
 
 ### 4.2 Model
 
-The database schema is a star schema with one fact table and four dimension tables. The fact table is `songplays` and the dimension tables are `users`, `songs`, `artists` and `time`:
+The database schema is a star schema with one fact table and four dimension tables.  
+The **fact table** is 
+- `songplays`  
 
-**Fact Table: songplays**
-| Column | Origin | Type | Comment |
-| ------ | ------ | ---- | ------- |
-| **songplay_id** | log_data itemInSession | NOT NULL SMALLINT | PRIMARY KEY |
-| *start_time* | log_data ts | NOT NULL TIMESTAMP | REFERENCES time(start_time) |
-| *user_id* | log_data userId | NOT NULL INTEGER | REFERENCES users(user_id) |
-| level | log_data level | NOT NULL CHAR(4) |  |
-| *song_id* | song_data song_id | NOT NULL CHAR(18) | REFERENCES songs(song_id) |
-| *artist_id* | song_data artist_id | NOT NULL CHAR(18) | REFERENCES artists(artist_id) |
-| **session_id** | log_data sessionId | NOT NULL INTEGER | PRIMARY KEY |
-| location | log_data location | TEXT |  |
+and the **dimension tables** are 
+- `users`, 
+- `songs`, 
+- `artists`, and 
+- `time`:
 
+<img src="images/sparkify_schema-hackerdraw.png"  width="600">
 
-**Fact Table: songplays**
-| Column | Type | Comment |
-| ------ | ---- | ------- |
-| **songplay_id**\* | NOT NULL SMALLINT | **PRIMARY KEY** from log JSON (itemInSession) |
-| *start_time* | NOT NULL TIMESTAMP | REFERENCES time(start_time) |
-| *user_id* | NOT NULL INTEGER | REFERENCES users(user_id) |
-| level | NOT NULL CHAR(4) | free or paid from log JSON |
-| *song_id* | NOT NULL CHAR(18) | REFERENCES songs(song_id) |
-| *artist_id* | NOT NULL CHAR(18) | REFERENCES artists(artist_id) |
-| **session_id**\* | NOT NULL INTEGER | **PRIMARY KEY** from log JSON |
-| location | TEXT | from song JSON |
-| user_agent | TEXT | from log JSON |  
-
-\*Please note that songplay_id and session_id in combination are the unique primary keys of the fact table.
-Please also note that there are logs without any userId and song information. These logs are not relevant for the analytics team and therefore not included in the fact table.  It appears as if they were generated when users log off.
-
-**Dimension Table: users**
-| Column | Type | Comment |
-| ------ | ---- | ------- |
-| **user_id** | NOT NULL INTEGER | PRIMARY KEY from log JSONs |
-| first_name | TEXT | from log JSONS |
-| last_name | TEXT | from log JSONS |
-| gender | CHAR(1) | from log JSON |
-| level\* | CHAR(4) | free or paid from log JSON |  
-
-\**Please note that due to changes in user status, level represents the current level of the user and may differ from the level in the fact table which represents the level the song was heard with.*
-
-
-**Dimension Table: songs**
-| Column | Type | Comment |
-| ------ | ---- | ------- |
-| **song_id** | CHAR(18) | PRIMARY KEY from song JSON |
-| title | TEXT | from song JSON |
-| *artist_id* | CHAR(18) | REFERENCES artists(artist_id) |
-| year | SMALLINT | from song JSON |
-| duration | DECIMAL(10, 4) | from song JSON |
-
-**Dimension Table: artists**
-| Column | Type | Comment |
-| ------ | ---- | ------- |
-| **artist_id** | CHAR(18) | PRIMARY KEY from song JSON |
-| name | TEXT | from song JSON |
-| location | TEXT | from song JSON |
-| lattitude | DECIMAL(8, 5) | from song JSON |
-| longitude | DECIMAL(8, 5) | from song JSON |
-
-**Dimension Table: time**
-| Column | Type | Comment |
-| ------ | ---- | ------- |
-| **start_time** | TIMESTAMP | PRIMARY KEY from log JSON |
-| hour | SMALLINT | to be calculated from start_time |
-| day | SMALLINT | to be calculated from start_time |
-| week | SMALLINT | to be calculated from start_time |
-| month | SMALLINT | to be calculated from start_time |
-| year | SMALLINT | to be calculated from start_time |
-| weekday | SMALLINT | to be calculated from start_time |
-
+Please note the following:
+- The `songplays` table 
+    - has a composite unique primary key consisting of `session_id` and `songplay_id`, the latter is build on `itemInSession`,
+    - has a foreign key to the `time` table (`start_time`), the `users` table (`user_id`), the `songs` table (`song_id`), and the `artists` table (`artist_id`),
+    - is evenly distributed across the nodes of the cluster, as the later queries are not clear yet, and
+    - is sorted by `start_time`.
+    - All columns are not nullable.
+- The `time` table
+    - has a unique primary key (`start_time`),
+    - is evenly distributed across the nodes (using the `DISTSTYLE EVEN` strategy) assuming times when songs are played is growing over time, and would sooner or later not fit on a single node, and
+    - is sorted by `start_time` to enable faster joins with the `songplays` table.
+    - All columns are not nullable.
+- The `users` table
+    - has a unique primary key (`user_id`),
+    - is available on all nodes of the cluster (using the `DISTSTYLE ALL` strategy) assuming that the number of users is small enough to fit on all nodes, and to enable fast joins with the `songplays` table, and
+    - is sorted by `last_name`, `first_name`, `gender`, and `level`.
+    - All columns are not nullable.
+    - The `level` column here, represents the lastest known subscription level of the user. This is different than in the songplays table, where the `level` column represents the subscription level at the time of the song play. 
+- The `artists` table
+    - has a unique primary key (`artist_id`),
+    - is available on all nodes of the cluster (using the `DISTSTYLE ALL` strategy) assuming that the number of artists is small enough to fit on all nodes, and to enable fast joins with the `songplays` table, and
+    - is sorted by `name`.
+    - The columns `location`, `latitude`, and `longitude` are nullable. They are gathered from the song files, which are not always complete, and are only partly matching the artist information from the log files.
+- The `songs` table
+    - has a unique primary key (`song_id`),
+    - is available on all nodes of the cluster (using the `DISTSTYLE ALL` strategy) assuming that the number of songs is small enough to fit on all nodes, and to enable fast joins with the `songplays` table, and
+    - is sorted by `title`, `artist_id`, and `year`.
+    - It is also linked to the `artists` table using the `artist_id` column, which is a deviation from the original star schema principle, but helps combining these specific data.
+    - The columns `duration` and `year` are nullable. They are gathered from the song files, which are not always complete, and are only partly matching the song information from the log files.
+- Don't confuse the `artist_id` and the `song_id` from the `song_data` files with the `artist_id` and the `song_id` in this schema. The `song_data` files are not matching well the entries in the `log_data` files regarding names and titles. Therefore, own keys are used for the `songs` and `artists` tables, and as a consequence, for the `songplays` table as well.
 
 ### 4.3 ETL
+
+## 5. Recommendations for the team
+- The data in the `log_data` files regarding artist names and song titles does not match the data from the `song_data` files. Also the `song_data` files seem to have some issues that look like duplicates and wrong entries. To build a good data source for analytics, the corresponding processes should be reviewed and improved.
+- The usage in terms of common queries and the future size of the different tables is not clear yet. Therefore, the distribution strategy for the tables is not optimized yet. This should be reviewed once the usage and the size of the data is clearer.
+- Right now, using a Redshift cluster is not really necessary. The data is small enough to be processed on a single node or even a more traditional SQL database. However, if the data is growing, and the cluster can be easily scaled up. Therefore, it is recommended to use a Redshift cluster from the beginning, but this should be reviewed once the future growth of Sparkify is clearer.
 
 
