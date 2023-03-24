@@ -36,9 +36,8 @@ def main():
     )
     cursor = connection.cursor()
 
-    print(cursor.connection.encoding)
     # Load staging tables
-    # load_staging_tables(cursor, connection)
+    load_staging_tables(cursor, connection)
 
     # Insert data into dimensional and fact tables
     insert_tables(cursor, connection)
