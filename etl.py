@@ -31,13 +31,14 @@ def main():
     # Connect to the Redshift cluster and get cursor
     connection = psycopg2.connect(
         "host={} dbname={} user={} password={} port={}".format(
-            *config["CLUSTER"].values()
+            *config["REDSHIFT"].values()
         )
     )
     cursor = connection.cursor()
 
+    print(cursor.connection.encoding)
     # Load staging tables
-    load_staging_tables(cursor, connection)
+    # load_staging_tables(cursor, connection)
 
     # Insert data into dimensional and fact tables
     insert_tables(cursor, connection)
