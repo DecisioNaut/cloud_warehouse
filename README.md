@@ -40,6 +40,22 @@ Please note that, in addition to the project itself, this repository also contai
 
 ## 3. Usage
 
+The enviroment for this project is a Python 3.11 environment with `psycopg2` installed. For doing the lessons there are many other packages installed, but they are not needed for the project.
+
+For your convenience, I've created a `requirements.txt` file which you can use to install the necessary packages for this project. Please note that this file does also contain the packages used for the lessons.
+
+```
+pip install -r requirements.txt
+```
+
+To run the scripts, simply run them from the command line:
+```
+python create_tables.py
+python etl.py
+```
+
+`create_tables.py` drops the tables, if existant, and rebuilds them. You should run this file to reset your tables before each time you run your ETL scripts.
+
 ## 4. Data and Model
 
 ### 4.1 Data
