@@ -209,6 +209,8 @@ ORDER BY
 """
 
 user_table_insert = """
+INSERT INTO users
+
 WITH
     user_log_data AS (
         SELECT
@@ -233,8 +235,7 @@ WITH
         GROUP BY
             user_id
     )
---- 
-INSERT INTO users
+
 SELECT
     user_log_data.user_id,
     user_log_data.first_name,
@@ -251,6 +252,8 @@ ON
 """
 
 artist_table_insert = """
+INSERT INTO artists
+
 WITH
     log_data_artists AS (
         SELECT DISTINCT
@@ -274,8 +277,7 @@ WITH
             latitude DESC,
             longitude DESC
     )
----
-INSERT INTO artists
+
 SELECT
     ROW_NUMBER() OVER () AS artist_id,
     log_data_artists.name,
@@ -293,6 +295,8 @@ ON
 
 
 song_table_insert = """
+INSERT INTO songs
+
 WITH log_data_songs AS (
     SELECT
         song AS title,
@@ -337,8 +341,7 @@ song_data_ranked AS (
     FROM
         song_data
 )
----
-INSERT INTO songs
+
 SELECT
     ROW_NUMBER() OVER () AS song_id,
     log_data_songs_with_artist_id.title,
@@ -351,13 +354,24 @@ LEFT JOIN
     song_data_ranked
 ON
     log_data_songs_with_artist_id.title = song_data_ranked.title AND
-    log_data_songs_with_artist_id.artist = song_data_ranked.artist_name
-WHERE
-    song_data_ranked.rank = 1;
+    log_data_songs_with_artist_id.artist = song_data_ranked.artist_name;
 """
 
 # Fact Table
 songplay_table_insert = """
+
+INSERT INTO songplays (
+    session_id,
+    songplay_id,
+    start_time,
+    artist_id,
+    song_id,
+    user_id,
+    level,
+    location,
+    user_agent
+)
+
 WITH
     raw_log_data AS (
         SELECT
@@ -392,17 +406,7 @@ WITH
             songs
     )
 
-INSERT INTO songplays (
-    session_id,
-    songplay_id,
-    start_time,
-    artist_id,
-    song_id,
-    user_id,
-    level,
-    location,
-    user_agent
-)
+
 SELECT
     raw_log_data.session_id,
     raw_log_data.item_in_session,
