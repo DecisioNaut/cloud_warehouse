@@ -6,3 +6,4 @@ dwh.cfg
 *.csv
 *.sqlite3
 .vscode
+tempCodeRunnerFile.py
