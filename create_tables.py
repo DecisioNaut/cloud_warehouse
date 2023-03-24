@@ -27,7 +27,6 @@ def main():
     # Read the configuration file
     config = configparser.ConfigParser()
     config.read("dwh.cfg")
-    print(*config["REDSHIFT"].values())
 
     # Connect to the Redshift cluster and get cursor
     connection = psycopg2.connect(
