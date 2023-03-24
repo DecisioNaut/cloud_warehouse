@@ -233,7 +233,7 @@ WITH
         GROUP BY
             user_id
     )
-
+--- 
 INSERT INTO users
 SELECT
     user_log_data.user_id,
@@ -274,7 +274,7 @@ WITH
             latitude DESC,
             longitude DESC
     )
-
+---
 INSERT INTO artists
 SELECT
     ROW_NUMBER() OVER () AS artist_id,
@@ -337,7 +337,7 @@ song_data_ranked AS (
     FROM
         song_data
 )
-
+---
 INSERT INTO songs
 SELECT
     ROW_NUMBER() OVER () AS song_id,
