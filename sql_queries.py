@@ -42,43 +42,39 @@ DROP TABLE IF EXISTS songplays CASCADE;
 # Staging Tables
 staging_logs_table_create = """
 CREATE TABLE IF NOT EXISTS log_data (
-    artist          VARCHAR(200)    NULL,
-    auth            VARCHAR(50)     NOT NULL,
-    firstName       VARCHAR(50)     NULL,
-    gender          CHAR(1)         NULL,
-    itemInSession   INTEGER         NOT NULL,
-    lastName        VARCHAR(50)     NULL,
-    length          FLOAT           NULL,
-    level           CHAR(4)         NOT NULL,
-    location        VARCHAR(200)    NULL,
-    method          VARCHAR(10)     NOT NULL,
-    page            VARCHAR(50)     NOT NULL,
-    registration    FLOAT           NULL,
-    sessionId       INTEGER         NOT NULL,
-    song            VARCHAR(200)    NULL,
-    status          INTEGER         NOT NULL,
-    ts              BIGINT          NOT NULL,
-    userAgent       VARCHAR(200)    NULL,
-    userId          INTEGER         NULL,
-    UNIQUE          (sessionId, itemInSession),
-    PRIMARY KEY     (sessionId, itemInSession)
+    artist          VARCHAR(200),
+    auth            VARCHAR(50),
+    firstName       VARCHAR(50),
+    gender          CHAR(1),
+    itemInSession   INTEGER,
+    lastName        VARCHAR(50),
+    length          FLOAT,
+    level           CHAR(4),
+    location        VARCHAR(200),
+    method          VARCHAR(10),
+    page            VARCHAR(50),
+    registration    FLOAT,
+    sessionId       INTEGER,
+    song            VARCHAR(200),
+    status          INTEGER,
+    ts              BIGINT,
+    userAgent       VARCHAR(200),
+    userId          INTEGER
 );
 """
 
 staging_songs_table_create = """
 CREATE TABLE IF NOT EXISTS song_data (
-    artist_id       VARCHAR(50)     NOT NULL,
-    artist_latitude FLOAT           NULL,
-    artist_location VARCHAR(200)    NULL,
-    artist_longitude FLOAT          NULL,
-    artist_name     VARCHAR(200)    NOT NULL,
-    duration        FLOAT           NOT NULL,
-    num_songs       INTEGER         NOT NULL,
-    song_id         VARCHAR(50)     NOT NULL,
-    title           VARCHAR(200)    NOT NULL,
-    year            INTEGER         NOT NULL,
-    UNIQUE          (artist_id, song_id),
-    PRIMARY KEY     (artist_id, song_id)
+    artist_id       VARCHAR(50),
+    artist_latitude FLOAT,
+    artist_location VARCHAR(200),
+    artist_longitude FLOAT,
+    artist_name     VARCHAR(200),
+    duration        FLOAT,
+    num_songs       INTEGER,
+    song_id         VARCHAR(50),
+    title           VARCHAR(200),
+    year            INTEGER
 );
 """
 
@@ -254,42 +250,53 @@ ON
 artist_table_insert = """
 INSERT INTO artists
 
-WITH
-    log_data_artists AS (
-        SELECT DISTINCT
-            artist AS name
-        FROM
-            log_data
-        WHERE
-            auth = 'Logged In' AND
-            length > 0
-    ),
-    song_data_artists AS (
-        SELECT DISTINCT
-            artist_name,
-            artist_location AS location,
-            artist_latitude AS latitude,
-            artist_longitude AS longitude
-        FROM
-            song_data
-        ORDER BY
-            location DESC,
-            latitude DESC,
-            longitude DESC
-    )
+WITH 
+artist_names AS (
+    SELECT DISTINCT
+        artist AS name
+    FROM
+        log_data
+    WHERE
+        auth = 'Logged In' AND
+        length > 0
+    ORDER BY
+        name DESC
+),
+artist_names_and_ids as (
+    SELECT 
+        ROW_NUMBER() OVER() AS artist_id,
+        name
+    FROM 
+        artist_names
+),
+song_data_artists AS (
+    SELECT DISTINCT
+        artist_name,
+        MAX(artist_location) AS location,
+        MAX(artist_latitude) AS latitude,
+        MAX(artist_longitude) AS longitude
+    FROM
+        song_data
+    GROUP BY
+        artist_name
+    ORDER BY
+        artist_name DESC
+)
 
-SELECT
-    ROW_NUMBER() OVER () AS artist_id,
-    log_data_artists.name,
-    song_data_artists.location,
-    song_data_artists.latitude,
-    song_data_artists.longitude
+SELECT DISTINCT
+    artist_id,
+    name,
+    location,
+    latitude,
+    longitude
 FROM
-    log_data_artists
+    artist_names_and_ids
 LEFT JOIN
     song_data_artists
 ON
-    log_data_artists.name = song_data_artists.artist_name;
+    artist_names_and_ids.name = song_data_artists.artist_name
+ORDER BY
+    artist_id;
 
 """
 
