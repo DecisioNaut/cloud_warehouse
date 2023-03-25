@@ -250,7 +250,7 @@ ON
 artist_table_insert = """
 INSERT INTO artists
 
-WITH 
+WITH
 artist_names AS (
     SELECT DISTINCT
         artist AS name
@@ -263,10 +263,10 @@ artist_names AS (
         name DESC
 ),
 artist_names_and_ids as (
-    SELECT 
+    SELECT
         ROW_NUMBER() OVER() AS artist_id,
         name
-    FROM 
+    FROM
         artist_names
 ),
 song_data_artists AS (
