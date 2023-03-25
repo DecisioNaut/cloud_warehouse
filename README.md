@@ -87,28 +87,26 @@ A typical JSON log file looks like this:
 As we are aiming to build a data warehouse for querying song plays, it is important to notice that not all log entries are relevant for the data warehouse. Files where `auth` is not `Logged In` or where `lenght` is 0 are those not containing the relevant information. So, we need to filter out those files before loading them into the final files.  
 We are also provided with a JSON file `log_json_path.json` which contains the path to the relevant information in the log files. This is used to parse the log files.
 The schema for saving the `log_data` files in Redshift is:
-| Column Name    | Data Type      | Availability |
-|----------------|----------------|--------------|
-| artist         | VARCHAR(200)   | NULL         |
-| auth           | VARCHAR(50)    | NOT NULL     |
-| firstName      | VARCHAR(50)    | NULL         |
-| gender         | CHAR(1)        | NULL         |
-| itemInSession  | INTEGER        | NOT NULL     |
-| lastName       | VARCHAR(50)    | NULL         |
-| length         | FLOAT          | NULL         |
-| level          | CHAR(4)        | NOT NULL     |        
-| location       | VARCHAR(200)   | NULL         |
-| method         | VARCHAR(10)    | NOT NULL     |
-| page           | VARCHAR(50)    | NOT NULL     |
-| registration   | FLOAT          | NULL         |
-| sessionId      | INTEGER        | NOT NULL     |
-| song           | VARCHAR(200)   | NULL         |
-| status         | INTEGER        | NOT NULL     |
-| ts             | BIGINT         | NOT NULL     |
-| userAgent      | VARCHAR(200)   | NULL         |
-| userId         | INTEGER        | NULL         |
-
-To include a data quality check, we require `sessionId` and `itemInSession` to be unique.
+| Column Name    | Data Type      |
+|----------------|----------------|
+| artist         | VARCHAR(200)   |
+| auth           | VARCHAR(50)    |
+| firstName      | VARCHAR(50)    |
+| gender         | CHAR(1)        |
+| itemInSession  | INTEGER        |
+| lastName       | VARCHAR(50)    |
+| length         | FLOAT          |
+| level          | CHAR(4)        |        
+| location       | VARCHAR(200)   |
+| method         | VARCHAR(10)    |
+| page           | VARCHAR(50)    |
+| registration   | FLOAT          |
+| sessionId      | INTEGER        |
+| song           | VARCHAR(200)   |
+| status         | INTEGER        |
+| ts             | BIGINT         |
+| userAgent      | VARCHAR(200)   |
+| userId         | INTEGER        |
 
 #### 4.1.2 Song Data
 A typical JSON song file looks like this:
@@ -129,18 +127,18 @@ A typical JSON song file looks like this:
 It is important to notice here, that the `song_data` files are not matching well with the `log_data` files. This may be due to different sources or naming convention, misspellings, etc. So, we need to be careful when joining the data and concentrate on data from the `log_data` files.
 
 The schema for saving the `song_data` files in Redshift is:
-| Column Name      | Data Type      | Availability |
-|------------------|----------------|--------------|
-| artist_id        | VARCHAR(50)    | NOT NULL     |
-| artist_latitude  | FLOAT          | NULL         |
-| artist_location  | VARCHAR(200)   | NULL         |
-| artist_longitude | FLOAT          | NULL         |
-| artist_name      | VARCHAR(200)   | NOT NULL     |
-| duration         | FLOAT          | NOT NULL     |
-| num_songs        | INTEGER        | NOT NULL     |
-| song_id          | VARCHAR(50)    | NOT NULL     |
-| title            | VARCHAR(200)   | NOT NULL     |
-| year             | INTEGER        | NOT NULL     |
+| Column Name      | Data Type      |
+|------------------|----------------|
+| artist_id        | VARCHAR(50)    |
+| artist_latitude  | FLOAT          |
+| artist_location  | VARCHAR(200)   |
+| artist_longitude | FLOAT          |
+| artist_name      | VARCHAR(200)   |
+| duration         | FLOAT          |
+| num_songs        | INTEGER        |
+| song_id          | VARCHAR(50)    |
+| title            | VARCHAR(200)   |
+| year             | INTEGER        |
 
 Please note that `year` is sometimes 0, which is not a valid year. So, we need to convert these values to `NULL` before loading them into the final files.
 
